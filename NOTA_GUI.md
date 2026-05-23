@@ -48,5 +48,6 @@ def al_dar_clic_en_primario(self):
     self.mostrar_tabla_en_pantalla(resultado_tabla)
 
 Tip: Para las tablas puede usar un CTkScrollableFrame con filas de CTkLabel para simular las celdas.
+```
 
 Mas adelante mi idea es implementar una libreria de conversion para poder pasar la pantalla final a un pdf o un excel
