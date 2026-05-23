@@ -1,22 +1,24 @@
 import customtkinter as ctk
-from logic.almacen import calcular_almacen
+# CAMBIAMOS ESTA LÍNEA PARA IMPORTAR LAS FUNCIONES REALES
+from logic.almacen import registrar_movimiento, obtener_resumen_almacen
 
 class VentanaPrincipal(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        # Configuración basica de la ventana
+        # Configuración básica de la ventana
         self.title("Sistema de Costos Históricos")
         self.geometry("800x600")
         
-        # Titulo app
+        # Título de la app
         self.titulo = ctk.CTkLabel(self, text="Control de Costos Históricos", font=("Arial", 22, "bold"))
         self.titulo.pack(pady=15)
 
-        # Crear tabs
+        # Crear el contenedor de pestañas (Tabs)
         self.pestanas = ctk.CTkTabview(self, width=760, height=500)
         self.pestanas.pack(pady=10, padx=20)
 
+        # Creamos las pestañas solicitadas por la profa
         self.pestanas.add("Almacén")
         self.pestanas.add("Nómina")
         self.pestanas.add("Prorrateos")
@@ -35,6 +37,7 @@ class VentanaPrincipal(ctk.CTk):
         ctk.CTkLabel(self.pestanas.tab("Resultados"), text="Estado de Resultados y Costos").pack(pady=20)
 
     def ejecutar_calculo(self):
-        # Aquí conectamos la interfaz con la carpeta logic
-        resultado = calcular_almacen()
-        print(f"Resultado devuelto a la GUI: {resultado}")
+        # PARCEH PARA PARA QUE HAGA UN REGISTRO DE PRUEBA Y NO TRUENE
+        print("\n[GUI] Picaste el botón. Simulando un registro en la lógica...")
+        resultado = registrar_movimiento("Compra de Prueba", 10, 100.0)
+        print(f"[GUI] Respuesta recibida de la lógica del almacén:\n{resultado}")
