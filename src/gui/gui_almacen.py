@@ -14,7 +14,7 @@ class TabAlmacen(ctk.CTkFrame):
         frame_inputs.grid_columnconfigure((0, 1, 2, 3, 4, 5, 6), weight=1)
 
         ctk.CTkLabel(frame_inputs, text="Concepto:", font=("Arial", 13, "bold")).grid(row=0, column=0, padx=5, pady=15, sticky="e")
-        self.combo_concepto = ctk.CTkComboBox(frame_inputs, values=["Apertura", "Compra", "Salida"])
+        self.combo_concepto = ctk.CTkOptionMenu(frame_inputs, values=["Apertura", "Compra", "Salida"])
         self.combo_concepto.grid(row=0, column=1, padx=5, pady=15, sticky="w")
 
         ctk.CTkLabel(frame_inputs, text="Cantidad:", font=("Arial", 13, "bold")).grid(row=0, column=2, padx=5, pady=15, sticky="e")

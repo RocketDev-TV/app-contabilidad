@@ -4,7 +4,8 @@ from logic.almacen import obtener_resumen_almacen, historial_almacen
 from logic.nomina import obtener_resumen_nomina
 from logic.prorrateo import obtener_cargos_indirectos_orden
 
-def generar_estado_costos():
+def generar_estado_costos(inv_inicial_proceso=0.0, inv_final_proceso=0.0, 
+                          inv_inicial_terminada=0.0, inv_final_terminada=0.0):
     """
     esta función ya devuelve el formato EXACTO del PDF de estado de costos de erly.
     Sigue este orden de arriba hacia abajo para pintar la cédula en la GUI.
@@ -52,7 +53,7 @@ def generar_estado_costos():
     costo_incurrido = mp_directa_consumida + mo_directa + cargos_indirectos_totales
 
     # Inventarios de Producción en Proceso (Los dejamos en 0 de forma genérica o inputs vacíos si la no se da el dato)
-    inv_inicial_proceso = 0.0
+    inv_inicial_proceso = inv_inicial_proceso
     total_procesado = costo_incurrido + inv_inicial_proceso
     inv_final_proceso = 0.0
     
@@ -87,12 +88,13 @@ def generar_estado_costos():
         "costo_de_lo_vendido": round(costo_de_lo_vendido, 2)
     }
 
-def generar_estado_resultados(ingresos_ventas, gastos_operacion=0.0):
+def generar_estado_resultados(ingresos_ventas, costo_de_lo_vendido, gastos_operacion=0.0):
     """
     Genera el Estado de Resultados final.
     
     Argumentos:
         ingresos_ventas (float): Cuánto dinero entró por vender los productos (Input de la GUI)
+        costo_de_lo_vendido (float): Costo de lo vendido (Input de la GUI)
         gastos_operacion (float): Gastos de administración y venta (Opcional, default 0)
     """
     # Necesitamos el Costo de lo Vendido para poder restar

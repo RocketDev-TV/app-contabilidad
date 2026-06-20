@@ -229,22 +229,31 @@ class TabProrrateos(ctk.CTkFrame):
     def ejecutar_final(self):
         import logic.prorrateo as logica
         
-        if not self.secundario_calculado:
+        if not getattr(self, 'secundario_calculado', False):
             messagebox.showwarning("Aviso", "Primero debes calcular el Prorrateo Secundario.")
             return
 
         try:
             base_ordenes = {}
             for prod, ord_dict in self.entries_bases_fin.items():
-                base_ordenes[prod] = {ord_nom: float(ent.get()) for ord_nom, ent in ord_dict.items()}
+                # Añadimos 'or 0' por si dejas el campo vacío sin querer
+                base_ordenes[prod] = {ord_nom: float(ent.get() or 0) for ord_nom, ent in ord_dict.items()}
             
-            res = calcular_prorrateo_final(base_ordenes)
+            # 1. Llamar a la función CON el prefijo logica.
+            res = logica.calcular_prorrateo_final(base_ordenes)
             
+                       
+            # 3. Limpiar tabla
             for item in self.tabla_fin.get_children(): 
                 self.tabla_fin.delete(item)
             
+            # 4. Insertar los nuevos datos en la tabla
             for lote, monto in res.items():
                 self.tabla_fin.insert("", "end", values=(lote, f"$ {monto:,.2f}"))
                 
         except ValueError:
             messagebox.showerror("Error", "Asegúrate de ingresar valores numéricos en las bases finales.")
+        except Exception as e:
+            # Esta trampa evitará cualquier error silencioso futuro
+            messagebox.showerror("Error Inesperado", f"Falló el cálculo. Detalle: {e}")
+            print(f"Error Inesperado en Prorrateo Final: {e}")
