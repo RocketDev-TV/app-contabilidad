@@ -3,14 +3,15 @@ from tkinter import ttk, messagebox
 from logic.prorrateo import (
     calcular_prorrateo_primario,
     calcular_prorrateo_secundario,
-    calcular_prorrateo_final,
-    resultados_primario,
-    resultados_secundario
+    calcular_prorrateo_final
 )
 
 class TabProrrateos(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
+
+        self.primario_calculado = False
+        self.secundario_calculado = False
 
         # =========================================================
         # SUB-PESTAÑAS
@@ -46,13 +47,12 @@ class TabProrrateos(ctk.CTkFrame):
         self.style.configure("Treeview.Heading", background="#1f538d", foreground="white", relief="flat", font=("Arial", 12, "bold"))
 
     # ---------------------------------------------------------
-    # 1. PRORRATEO PRIMARIO (Matriz Invertida e Intuitiva)
+    # 1. PRORRATEO PRIMARIO
     # ---------------------------------------------------------
     def setup_primario(self):
         scroll_frame = ctk.CTkScrollableFrame(self.tab_prim)
         scroll_frame.pack(fill="both", expand=True)
 
-        # --- SECCIÓN 1: GASTOS GLOBALES ---
         ctk.CTkLabel(scroll_frame, text="1. Gastos Globales a Prorratear", font=("Arial", 14, "bold")).grid(row=0, column=0, columnspan=5, pady=(5, 5))
         
         self.entries_gastos = {}
@@ -63,33 +63,25 @@ class TabProrrateos(ctk.CTkFrame):
             ent.grid(row=2, column=i+1, padx=5, pady=5)
             self.entries_gastos[nombre] = ent
 
-        # --- SECCIÓN 2: BASES DE DISTRIBUCIÓN INVERTIDAS ---
         ctk.CTkLabel(scroll_frame, text="2. Cédula de Bases (Gastos en Filas vs Departamentos en Columnas)", font=("Arial", 14, "bold")).grid(row=3, column=0, columnspan=5, pady=(20, 10))
         
-        # Etiquetas de Columnas (Departamentos)
         ctk.CTkLabel(scroll_frame, text="CONCEPTO / GASTO", font=("Arial", 11, "italic")).grid(row=4, column=0, padx=10, sticky="w")
         for col_idx, dep in enumerate(self.todos_deps, start=1):
             ctk.CTkLabel(scroll_frame, text=dep, font=("Arial", 11, "bold")).grid(row=4, column=col_idx, padx=10, pady=5)
 
-        # Diccionario para almacenar los entries indexados por [gasto][dep] de manera natural
         self.entries_bases_prim = {gasto: {} for gasto in self.gastos_nombres}
 
-        # Generar Filas (Gastos) y Columnas (Departamentos)
         for row_idx, gasto in enumerate(self.gastos_nombres, start=5):
-            # Etiqueta de la Fila (Nombre del Gasto)
             ctk.CTkLabel(scroll_frame, text=gasto, font=("Arial", 12, "bold")).grid(row=row_idx, column=0, sticky="w", padx=10, pady=5)
-            
             for col_idx, dep in enumerate(self.todos_deps, start=1):
                 ent = ctk.CTkEntry(scroll_frame, width=100)
                 ent.insert(0, "0")
                 ent.grid(row=row_idx, column=col_idx, padx=6, pady=4)
                 self.entries_bases_prim[gasto][dep] = ent
 
-        # Botón Calcular
         btn_calc = ctk.CTkButton(scroll_frame, text="Calcular Primario", command=self.ejecutar_primario, height=35)
         btn_calc.grid(row=10, column=0, columnspan=5, pady=20)
 
-        # --- TABLA DE RESULTADOS DE SALIDA ---
         columnas = ("Concepto",) + tuple(self.todos_deps) + ("Total",)
         self.tabla_prim = ttk.Treeview(scroll_frame, columns=columnas, show="headings", height=6)
         for col in columnas:
@@ -99,37 +91,31 @@ class TabProrrateos(ctk.CTkFrame):
 
     def ejecutar_primario(self):
         try:
-            # 1. Recolectar gastos de la parte superior
             gastos = {nombre: float(ent.get()) for nombre, ent in self.entries_gastos.items()}
-            
-            # 2. Recolectar las bases directamente desde la estructura limpia [gasto][dep]
             bases = {gasto: {} for gasto in self.gastos_nombres}
             for gasto in self.gastos_nombres:
                 for dep in self.todos_deps:
                     bases[gasto][dep] = float(self.entries_bases_prim[gasto][dep].get())
             
-            # 3. Limpiar estado interno lógico
             from logic.prorrateo import inicializar_prorrateos
             inicializar_prorrateos()
             
-            # 4. Procesar cálculo
             res = calcular_prorrateo_primario(gastos, bases)
             
-            # 5. Limpieza dinámica del Treeview
             for item in self.tabla_prim.get_children(): 
                 self.tabla_prim.delete(item)
             
-            # 6. Renderizar filas calculadas
             for gasto, datos in res["desglose_por_gasto"].items():
                 dist = datos["distribucion"]
                 fila = [gasto] + [f"$ {dist.get(dep, 0):,.2f}" for dep in self.todos_deps] + [f"$ {gastos[gasto]:,.2f}"]
                 self.tabla_prim.insert("", "end", values=fila)
                 
-            # 7. Fila de Totales actualizada
             tots = res["totales_departamentos"]
             fila_tot = ["TOTALES"] + [f"$ {tots.get(dep, 0):,.2f}" for dep in self.todos_deps] + [f"$ {sum(gastos.values()):,.2f}"]
             self.tabla_prim.insert("", "end", values=fila_tot, tags=('total',))
             self.tabla_prim.tag_configure('total', background='#14375e', foreground='white')
+
+            self.primario_calculado = True
             
         except ValueError:
             messagebox.showerror("Error", "Asegúrate de ingresar únicamente valores numéricos en los campos de las bases.")
@@ -169,7 +155,7 @@ class TabProrrateos(ctk.CTkFrame):
     def ejecutar_secundario(self):
         import logic.prorrateo as logica
 
-        if not logica.resultados_primario:
+        if not self.primario_calculado:
             messagebox.showwarning("Aviso", "Primero debes calcular el Prorrateo Primario.")
             return
             
@@ -181,7 +167,8 @@ class TabProrrateos(ctk.CTkFrame):
             saldos_iniciales = logica.resultados_primario.copy()
             res = calcular_prorrateo_secundario(self.deps_servicio, bases_redist)
             
-            for item in self.tabla_sec.get_children(): self.tabla_sec.delete(item)
+            for item in self.tabla_sec.get_children(): 
+                self.tabla_sec.delete(item)
             
             for serv in self.deps_servicio:
                 monto_a_repartir = saldos_iniciales.get(serv, 0)
@@ -202,44 +189,7 @@ class TabProrrateos(ctk.CTkFrame):
             self.tabla_sec.insert("", "end", values=fila_tot, tags=('total',))
             self.tabla_sec.tag_configure('total', background='#14375e', foreground='white')
             
-        except ValueError:
-            messagebox.showerror("Error", "Asegúrate de ingresar valores numéricos en las bases.")
-        import logic.prorrateo as logica
-
-        print(logica.resultados_primario)
-
-        if not resultados_primario:
-            messagebox.showwarning("Aviso", "Primero debes calcular el Prorrateo Primario.")
-            return
-            
-        try:
-            bases_redist = {}
-            for serv, prod_dict in self.entries_bases_sec.items():
-                bases_redist[serv] = {prod: float(ent.get()) for prod, ent in prod_dict.items()}
-            
-            saldos_iniciales = resultados_primario.copy()
-            res = calcular_prorrateo_secundario(self.deps_servicio, bases_redist)
-            
-            for item in self.tabla_sec.get_children(): self.tabla_sec.delete(item)
-            
-            for serv in self.deps_servicio:
-                monto_a_repartir = saldos_iniciales.get(serv, 0)
-                base_reparto = bases_redist.get(serv, {})
-                suma_base = sum(base_reparto.values())
-                
-                factor = monto_a_repartir / suma_base if suma_base > 0 else 0.0
-                
-                valores_productivos = []
-                for prod in self.deps_productivos:
-                    asignado = base_reparto.get(prod, 0) * factor
-                    valores_productivos.append(f"$ {asignado:,.2f}")
-                
-                fila = [serv, f"$ {monto_a_repartir:,.2f}"] + valores_productivos + ["$ 0.00"]
-                self.tabla_sec.insert("", "end", values=fila)
-                
-            fila_tot = ["NUEVOS SALDOS PRODUCTIVOS", "-"] + [f"$ {res.get(prod, 0):,.2f}" for prod in self.deps_productivos] + ["-"]
-            self.tabla_sec.insert("", "end", values=fila_tot, tags=('total',))
-            self.tabla_sec.tag_configure('total', background='#14375e', foreground='white')
+            self.secundario_calculado = True
             
         except ValueError:
             messagebox.showerror("Error", "Asegúrate de ingresar valores numéricos en las bases.")
@@ -276,53 +226,10 @@ class TabProrrateos(ctk.CTkFrame):
             self.tabla_fin.column(col, anchor="center")
         self.tabla_fin.grid(row=5, column=0, columnspan=4, pady=10, sticky="nsew")
 
-    def ejecutar_secundario(self):
-        import logic.prorrateo as logica
-        
-        # Leemos directo del módulo global
-        saldos_iniciales = logica.resultados_primario.copy()
-        
-        if not saldos_iniciales:
-            messagebox.showwarning("Aviso", "Primero debes calcular el Prorrateo Primario.")
-            return
-            
-        try:
-            bases_redist = {}
-            for serv, prod_dict in self.entries_bases_sec.items():
-                bases_redist[serv] = {prod: float(ent.get()) for prod, ent in prod_dict.items()}
-            
-            res = calcular_prorrateo_secundario(self.deps_servicio, bases_redist)
-            
-            for item in self.tabla_sec.get_children(): self.tabla_sec.delete(item)
-            
-            for serv in self.deps_servicio:
-                monto_a_repartir = saldos_iniciales.get(serv, 0)
-                base_reparto = bases_redist.get(serv, {})
-                suma_base = sum(base_reparto.values())
-                
-                factor = monto_a_repartir / suma_base if suma_base > 0 else 0.0
-                
-                valores_productivos = []
-                for prod in self.deps_productivos:
-                    asignado = base_reparto.get(prod, 0) * factor
-                    valores_productivos.append(f"$ {asignado:,.2f}")
-                
-                fila = [serv, f"$ {monto_a_repartir:,.2f}"] + valores_productivos + ["$ 0.00"]
-                self.tabla_sec.insert("", "end", values=fila)
-                
-            fila_tot = ["NUEVOS SALDOS PRODUCTIVOS", "-"] + [f"$ {res.get(prod, 0):,.2f}" for prod in self.deps_productivos] + ["-"]
-            self.tabla_sec.insert("", "end", values=fila_tot, tags=('total',))
-            self.tabla_sec.tag_configure('total', background='#14375e', foreground='white')
-            
-        except ValueError:
-            messagebox.showerror("Error", "Asegúrate de ingresar valores numéricos en las bases.")
-
     def ejecutar_final(self):
         import logic.prorrateo as logica
         
-        saldos_secundarios = logica.resultados_secundario.copy()
-
-        if not saldos_secundarios:
+        if not self.secundario_calculado:
             messagebox.showwarning("Aviso", "Primero debes calcular el Prorrateo Secundario.")
             return
 
@@ -333,45 +240,8 @@ class TabProrrateos(ctk.CTkFrame):
             
             res = calcular_prorrateo_final(base_ordenes)
             
-            for item in self.tabla_fin.get_children(): self.tabla_fin.delete(item)
-            
-            for lote, monto in res.items():
-                self.tabla_fin.insert("", "end", values=(lote, f"$ {monto:,.2f}"))
-                
-        except ValueError:
-            messagebox.showerror("Error", "Asegúrate de ingresar valores numéricos en las bases finales.")
-        import logic.prorrateo as logica
-
-        if not logica.resultados_secundario:
-            messagebox.showwarning("Aviso", "Primero debes calcular el Prorrateo Secundario.")
-            return
-
-        try:
-            base_ordenes = {}
-            for prod, ord_dict in self.entries_bases_fin.items():
-                base_ordenes[prod] = {ord_nom: float(ent.get()) for ord_nom, ent in ord_dict.items()}
-            
-            res = calcular_prorrateo_final(base_ordenes)
-            
-            for item in self.tabla_fin.get_children(): self.tabla_fin.delete(item)
-            
-            for lote, monto in res.items():
-                self.tabla_fin.insert("", "end", values=(lote, f"$ {monto:,.2f}"))
-                
-        except ValueError:
-            messagebox.showerror("Error", "Asegúrate de ingresar valores numéricos en las bases finales.")
-        if not resultados_secundario:
-            messagebox.showwarning("Aviso", "Primero debes calcular el Prorrateo Secundario.")
-            return
-
-        try:
-            base_ordenes = {}
-            for prod, ord_dict in self.entries_bases_fin.items():
-                base_ordenes[prod] = {ord_nom: float(ent.get()) for ord_nom, ent in ord_dict.items()}
-            
-            res = calcular_prorrateo_final(base_ordenes)
-            
-            for item in self.tabla_fin.get_children(): self.tabla_fin.delete(item)
+            for item in self.tabla_fin.get_children(): 
+                self.tabla_fin.delete(item)
             
             for lote, monto in res.items():
                 self.tabla_fin.insert("", "end", values=(lote, f"$ {monto:,.2f}"))
