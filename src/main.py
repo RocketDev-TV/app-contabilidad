@@ -28,7 +28,7 @@ if __name__ == "__main__":
     app = VentanaPrincipal()
     
     # 3. El loop infinito que mantiene la aplicación abierta y escuchando clics
-    app.mainloop()
+    app.mainloop() 
 
 
 # =====================================================================
@@ -70,4 +70,4 @@ def probar_backend_en_consola():
         print(f"{k:>35}: $ {v:.2f}")
 
 # Para activar el test, quita el '#' de la línea de abajo:
-# probar_backend_en_consola()
+#probar_backend_en_consola()
